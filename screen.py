@@ -34,15 +34,17 @@ frame_map = {
 }
 
 
-
+left_speed = 100
+right_speed = 50
 io.setmode(io.BCM)
  
 right_pin1 = 23
 right_pin2 = 24
 
-left_pin1 = 25
-left_pin2 = 8
-
+# left_pin1 = 25
+# left_pin2 = 8
+left_pin1 = 20
+left_pin2 = 21
 
 
 io.setup(right_pin1, io.OUT)
@@ -50,51 +52,50 @@ io.setup(right_pin2, io.OUT)
 io.setup(left_pin1, io.OUT)
 io.setup(left_pin2, io.OUT)
 
+ena_right1 = io.PWM(right_pin1, 50)
+ena_right1.start(0)
+ena_right2 = io.PWM(right_pin2, 50) 
+ena_right2.start(0)
+ena_left1 = io.PWM(left_pin1, 50) 	 
+ena_left1.start(0)
+ena_left2 = io.PWM(left_pin2, 50) 
+ena_left2.start(0)
 
 
- 
-def set(property, value):
-    try:
-        f = open("/sys/class/rpi-pwm/pwm0/" + property, 'w')
-        f.write(value)
-        f.close()	
-    except:
-        print("Error writing to: " + property + " value: " + value)
- 
-set("delayed", "0")
-set("mode", "pwm")
-set("frequency", "100")
-set("active", "1")
  
 def forward():
-    io.output(right_pin1, True)    
-    io.output(right_pin2, False)
-    io.output(left_pin1, True)    
-    io.output(left_pin2, False)
+    ena_right1.start(right_speed)
+    ena_right2.start(0)
+    ena_left1.start(left_speed)
+    ena_left2.start(0)
  
 def reverse():
-    io.output(right_pin1, False)
-    io.output(right_pin2, True)
-    io.output(left_pin1, False)    
-    io.output(left_pin2, True)
+    ena_right1.start(0)
+    ena_right2.start(right_speed)
+    ena_left1.start(0)
+    ena_left2.start(left_speed)
+
     
 def left():
-    io.output(right_pin1, False)
-    io.output(right_pin2, True)
-    io.output(left_pin1, False)    
-    io.output(left_pin2, True)
+    ena_right1.start(0)
+    ena_right2.start(right_speed)
+    ena_left1.start(0)
+    ena_left2.start(0)
+
     
 def right():
-    io.output(right_pin1, False)
-    io.output(right_pin2, True)
-    io.output(left_pin1, False)    
-    io.output(left_pin2, True)
+    ena_right1.start(0)
+    ena_right2.start(0)
+    ena_left1.start(0)
+    ena_left2.start(left_speed)
+
 
 def stop():
-    io.output(right_pin1, False)
-    io.output(right_pin2, False)
-    io.output(left_pin1, False)    
-    io.output(left_pin2, False)
+    ena_right1.start(0)
+    ena_right2.start(0)
+    ena_left1.start(0)
+    ena_left2.start(0)
+    
 
 
 
@@ -150,7 +151,7 @@ def write_log(log_text):
         print(log_text)
         
 def exit_handler():
-    print('My application is ending!')
+    print('MApplication exit reached! Turning off motors')
     stop()
     
     
@@ -245,7 +246,7 @@ class measure:
         try:
             # for i in range(number_of_samples):
                 distance += sonar_right.distance
-                time.sleep(.3)
+                # time.sleep(.3)
             #     time.sleep(.25)
             # distance = distance / (number_of_samples + 1)
         except RuntimeError:
@@ -272,7 +273,7 @@ if __name__ == '__main__':
     
     
     font = ImageFont.truetype('Minecraft.ttf', 36)
-    mindist = 60
+    mindist = 30
     a = renderAnimation()
     current_animation = ["blink",1]
     animation_thread = threading.Thread(target=a.animationLoop, args=current_animation)
@@ -280,7 +281,7 @@ if __name__ == '__main__':
     while True:
         if animation_thread.isAlive() == False:
             animation_thread.join()
-            animation_slect = random.randint(0,9)
+            animation_slect = random.randint(0,len(frame_map.keys())-1)
             anamation_type = list(frame_map.keys())[animation_slect]
             print(list(frame_map.keys()))
             current_animation = [anamation_type,frame_map[anamation_type]]
@@ -290,7 +291,7 @@ if __name__ == '__main__':
         current_left = measure.left_distance()
         if current_left == 0:
             current_left = 999
-        time.sleep(.1)
+        # time.sleep(.1)
         current_right = measure.right_distance()
         if current_right == 0:
             current_right = 999
@@ -302,7 +303,7 @@ if __name__ == '__main__':
             left()
         else:
             forward()
-        
+    
         # disp.clear()
         # disp.display()
         # draw.rectangle((0,0,width,height), outline=0, fill=0)

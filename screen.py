@@ -10,6 +10,9 @@ import time
 import board
 import adafruit_hcsr04
 import math
+import RPi.GPIO as io
+import atexit
+import random
 
 sonar_right = adafruit_hcsr04.HCSR04(trigger_pin=board.D5, echo_pin=board.D6)
 sonar_left = adafruit_hcsr04.HCSR04(trigger_pin=board.D13, echo_pin=board.D19)
@@ -20,15 +23,80 @@ debug = False
 frame_map = {
     "blink": 2,
     "angry": 4,
-    "test": 6,
+    # "test": 6,
     "test2": 3,
     "bored": 5,
     "excited": 3,
     "sad": 5,
     "sleepy": 4,
     "shaky": 6,
-    "spiral": 3
+    # "spiral": 3
 }
+
+
+
+io.setmode(io.BCM)
+ 
+right_pin1 = 23
+right_pin2 = 24
+
+left_pin1 = 25
+left_pin2 = 8
+
+
+
+io.setup(right_pin1, io.OUT)
+io.setup(right_pin2, io.OUT)
+io.setup(left_pin1, io.OUT)
+io.setup(left_pin2, io.OUT)
+
+
+
+ 
+def set(property, value):
+    try:
+        f = open("/sys/class/rpi-pwm/pwm0/" + property, 'w')
+        f.write(value)
+        f.close()	
+    except:
+        print("Error writing to: " + property + " value: " + value)
+ 
+set("delayed", "0")
+set("mode", "pwm")
+set("frequency", "100")
+set("active", "1")
+ 
+def forward():
+    io.output(right_pin1, True)    
+    io.output(right_pin2, False)
+    io.output(left_pin1, True)    
+    io.output(left_pin2, False)
+ 
+def reverse():
+    io.output(right_pin1, False)
+    io.output(right_pin2, True)
+    io.output(left_pin1, False)    
+    io.output(left_pin2, True)
+    
+def left():
+    io.output(right_pin1, False)
+    io.output(right_pin2, True)
+    io.output(left_pin1, False)    
+    io.output(left_pin2, True)
+    
+def right():
+    io.output(right_pin1, False)
+    io.output(right_pin2, True)
+    io.output(left_pin1, False)    
+    io.output(left_pin2, True)
+
+def stop():
+    io.output(right_pin1, False)
+    io.output(right_pin2, False)
+    io.output(left_pin1, False)    
+    io.output(left_pin2, False)
+
+
 
 
 ########################################################################
@@ -71,7 +139,7 @@ draw.text((x, top+34),     "anna@egloff.tech", font=font, fill=255)
 # Display image.
 disp.image(image1)
 disp.display()
-time.sleep(2)
+time.sleep(3)
 
 
 ########################################################################
@@ -80,7 +148,12 @@ time.sleep(2)
 def write_log(log_text):
     if debug == True:
         print(log_text)
-
+        
+def exit_handler():
+    print('My application is ending!')
+    stop()
+    
+    
 class renderAnimation:
     # Example non-blocking usage
     # a = renderAnimation()  
@@ -193,27 +266,62 @@ class movement:
     def right():
         print("Right")
 
+atexit.register(exit_handler)
+
 if __name__ == '__main__':
     
     
     font = ImageFont.truetype('Minecraft.ttf', 36)
-   
+    mindist = 60
+    a = renderAnimation()
+    current_animation = ["blink",1]
+    animation_thread = threading.Thread(target=a.animationLoop, args=current_animation)
+    animation_thread.start()
     while True:
+        if animation_thread.isAlive() == False:
+            animation_thread.join()
+            animation_slect = random.randint(0,9)
+            anamation_type = list(frame_map.keys())[animation_slect]
+            print(list(frame_map.keys()))
+            current_animation = [anamation_type,frame_map[anamation_type]]
+            animation_thread = threading.Thread(target=a.animationLoop, args=current_animation)
+            animation_thread.start()
+        
         current_left = measure.left_distance()
+        if current_left == 0:
+            current_left = 999
         time.sleep(.1)
         current_right = measure.right_distance()
-        disp.clear()
-        disp.display()
-        draw.rectangle((0,0,width,height), outline=0, fill=0)
-        draw.text((8, top+14), str(math.ceil(current_left)),  font=font, fill=255)      
-        draw.text((72, top+14), str(math.ceil(current_right)),  font=font, fill=255)
-        # Display image.
-        disp.image(image1)
-        disp.display()
+        if current_right == 0:
+            current_right = 999
+        if (current_left < mindist and current_right > mindist):
+            right()
+        elif (current_left < mindist and current_right < mindist):
+            reverse()
+        elif (current_left > mindist and current_right < mindist):
+            left()
+        else:
+            forward()
+        
+        # disp.clear()
+        # disp.display()
+        # draw.rectangle((0,0,width,height), outline=0, fill=0)
+        # # draw.text((8, top+14), str(math.ceil(current_left)),  font=font, fill=255)      
+        # # draw.text((72, top+14), str(math.ceil(current_right)),  font=font, fill=255)
+        # # Display image.
+        # disp.image(image1)
+        # disp.display()
         # time.sleep(.5)
     
     
     
+     
+    # forward()
+    # time.sleep(2)
+    # reverse()
+    # time.sleep(2)
+    # stop()
+
     
     
     
@@ -272,6 +380,3 @@ if __name__ == '__main__':
     # animation_thread = threading.Thread(target=a.animation, args=current_animation)
     # animation_thread.start()
     # animation_thread.join()
-    # 
-
-
